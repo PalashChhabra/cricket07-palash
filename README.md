@@ -69,3 +69,9 @@ The separately supplied Windows game executable is 4,354,048 bytes, SHA-256 `d77
 ## Visitor analytics
 
 Cloudflare Web Analytics is installed on the landing page and game launcher, registered to `cricket07-whymickywhy.netlify.app` in Micky's Cloudflare account. The public beacon token identifies the site; it does not grant dashboard access. View visits and page views privately at https://dash.cloudflare.com/3fb775a6edefa8f3b530ca6327c14289/web-analytics/overview?siteTag~in=3ebfb4873c6948d4a17d69b7f9cf8e09&excludeBots=Yes . Counts start after installation and may take time to appear; blocked scripts and browsers that block telemetry can reduce counts. No advertising pixel is installed.
+
+## Personal link page
+
+The mobile bio page lives at https://whymickywhy.netlify.app/ and its editable source is `site/links/index.html`. It links to Cricket 07, Clearlyy, Instagram, X and LinkedIn. `python3 tools/build_bio.py` creates the lightweight `bio-dist/` bundle without game files. Deploy it with `netlify deploy --prod --site b466c16e-f6ac-4e9d-8dfc-da5589cba805 --dir=bio-dist`. This explicitly targets the bio site and keeps the original project's Netlify link unchanged.
+
+The bio site has separate Cloudflare analytics in the same account, site tag `719defc76041499c913f399d16a2ebd2`. Analytics for both sites: https://dash.cloudflare.com/3fb775a6edefa8f3b530ca6327c14289/web-analytics/sites . Instagram acceptance of a URL is controlled by Instagram; this page cannot guarantee that a rejected URL will be accepted.
