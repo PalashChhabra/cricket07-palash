@@ -72,6 +72,6 @@ Cloudflare Web Analytics is installed on the landing page and game launcher, reg
 
 ## Personal link page
 
-The mobile bio page lives at https://whymickywhy.netlify.app/ and its editable source is `site/links/index.html`. It links to Cricket 07, Clearlyy, Instagram, X and LinkedIn. `python3 tools/build_bio.py` creates the lightweight `bio-dist/` bundle without game files. Deploy it with `netlify deploy --prod --site b466c16e-f6ac-4e9d-8dfc-da5589cba805 --dir=bio-dist`. This explicitly targets the bio site and keeps the original project's Netlify link unchanged.
+The mobile bio page lives at https://whymickywhy.netlify.app/ and its editable source is `site/links/index.html`. It highlights Cricket 07 with separate copy/open actions and links to Instinct, Clearlyy, Instagram, X and LinkedIn. The Instinct invite uses the direct destination supplied by Micky, without the Instagram redirect wrapper. `python3 tools/build_bio.py` creates the lightweight `bio-dist/` bundle without game files. Deploy it with `netlify deploy --prod --site b466c16e-f6ac-4e9d-8dfc-da5589cba805 --dir=bio-dist`. This explicitly targets the bio site and keeps the original project's Netlify link unchanged.
 
 The bio site has separate Cloudflare analytics in the same account, site tag `719defc76041499c913f399d16a2ebd2`. Analytics for both sites: https://dash.cloudflare.com/3fb775a6edefa8f3b530ca6327c14289/web-analytics/sites . Instagram acceptance of a URL is controlled by Instagram; this page cannot guarantee that a rejected URL will be accepted.
