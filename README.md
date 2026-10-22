@@ -1,6 +1,6 @@
 # Cricket 07 — The Micky Edit
 
-A personal landing page, playable browser shell, source download and AI customization kit by Micky Kharbanda. Instagram: [@whymickywhy](https://www.instagram.com/whymickywhy/). X: [@mickykharbanda](https://x.com/mickykharbanda). Work: [Clearlyy](https://clearlyy.io).
+A personal landing page, playable browser shell, source download and AI customization kit by Karan Singh, also known online as Micky. Instagram: [@whymickywhy](https://www.instagram.com/whymickywhy/). X: [@mickykharbanda](https://x.com/mickykharbanda). Work: [Clearlyy](https://clearlyy.io). LinkedIn: [Karan Singh](https://www.linkedin.com/in/karansinghworks).
 
 This extends [Dhaiwat Pandya's Cricket 07 browser port](https://github.com/Dhaiwat10/cricket07-browser). The complete upstream source is retained in `engine/`, including its build instructions, licenses and contributor credits. The original browser port and recompilation are not Micky's original work. The additions here are the modern squad/kit pack, browser save-file tools, installation fixes, personal page and customization prompts.
 
@@ -13,7 +13,7 @@ This extends [Dhaiwat Pandya's Cricket 07 browser port](https://github.com/Dhaiw
 - `tools/`: publication packaging and local serving.
 - `content/`: copyable prompts and local-play instructions.
 
-Original EA executables, Data/Audio archives, generated game C code and compiled WebAssembly are not included in the source repository or source ZIP. The separately hosted browser-build ZIP includes the prebuilt runtime and mod resources, with the game files still supplied by the player. Do not mistake the upstream MIT license for a license to redistribute EA's commercial game assets or team/player trademarks.
+Original EA executables, Data/Audio archives, generated game C code and compiled WebAssembly are not included in the source repository or source ZIP. The separately hosted browser-build ZIP includes the prebuilt runtime, mod resources and the explicitly requested game EXE in a separate `game-executable/` folder. The same EXE is available as its own download. Players still supply the matching Data/Audio folders. The supplied file is the compatible unprotected build used by this project, not a claim of a signed retail installer. Do not mistake the upstream MIT license for a license to redistribute EA's commercial game assets or team/player trademarks.
 
 ## Play
 
@@ -26,11 +26,11 @@ Native save files are retained locally with backup/restore controls. There is no
 First build a compatible browser runtime from your own game executable by following `engine/README.md`. Then:
 
 ```sh
-python3 tools/build_site.py --runtime /path/to/compiled/build
+python3 tools/build_site.py --runtime /path/to/compiled/build --game-exe /path/to/compatible/Cricket07.exe
 python3 tools/serve.py --directory dist --port 8086
 ```
 
-Open http://localhost:8086. The build creates `dist/`, a source ZIP, all prompts as Markdown and a separate ready-to-run browser-build ZIP. It uses an allowlist and rejects original game archives/executables and secret-file names. The source ZIP retains the complete upstream MIT license and the original engine source. The original game is never included.
+Open http://localhost:8086. The build creates `dist/`, a source ZIP, all prompts as Markdown and a separate ready-to-run browser-build ZIP. It uses an allowlist, rejects game Data/Audio archives and secret-file names, and allows exactly the explicitly supplied EXE after SHA-256 verification. The source ZIP retains the complete upstream MIT license and the original engine source. The complete game is not included; the EXE alone cannot replace its Data/Audio folders.
 
 To edit the roster, put your own original archive at `game/Data/data.gob`, then run `python3 mod-tools/build_modern_2026.py` in a Pillow/CairoSVG environment. Never overwrite the original archive. The builder checks 943 protected OG player records and 52 protected squads. Fan-created kits and proxy/generic player abilities do not claim authentic 2026 faces or official ratings. Old commentary/stadiums remain.
 
@@ -59,3 +59,9 @@ See `content/CUSTOMIZE-WITH-AI.md`. These starter prompts were written for this 
 - Bricolage Grotesque and DM Sans: open fonts; licenses are in `LICENSES/`.
 
 Keep the included upstream `LICENSE` with all redistributed code. The source bundle is MIT-licensed for code; game data, trademarks, public reference imagery and the compiled game-specific runtime have their own ownership. No promise is made of compatibility with every game release or existing mod.
+
+## Profile and supplied EXE
+
+The expanded profile identifies Karan Singh / Micky as a Clearlyy co-founder. The photo and work description are sourced from the public Clearlyy site; the requested LinkedIn profile is linked directly. LinkedIn page contents were unavailable to the research tools, so no LinkedIn-only employment history was invented. Photo source: https://clearlyy.io/__l5e/assets-v1/c1c1feff-9308-4f39-9bd6-06073d5403ab/karan-formal.jpg .
+
+The separately supplied Windows game executable is 4,354,048 bytes, SHA-256 `d776dba0cc506b968f7d228e036cf42aeb4abe45a8d1ad0d7226cdebf91553a2`. It is excluded from the MIT source ZIP and source repository. Its original local filename was `Cricket07.cracked.exe`; the public filename is `Cricket07.exe`. Its ownership is separate from the open-source software license. No original game Data or Audio archives are bundled. The modern team/kit pack applies to the browser build, not to this EXE by itself.

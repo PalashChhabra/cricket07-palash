@@ -132,14 +132,14 @@ async function fetchManifest() {
 function wanted(rel) {
   const l = rel.toLowerCase();
   if (l.startsWith('data/') || l.startsWith('audio/')) return rel;
-  if (l === 'cricket07.cracked.exe' || l === 'crack/cricket07.exe') return EXE;
+  if (l === 'cricket07.exe' || l === 'cricket07.cracked.exe' || l === 'crack/cricket07.exe') return EXE;
   return null;
 }
 
 async function importFromPicker(fileList) {
   const list = [...fileList].map((f) => ({ f, dest: wanted(f.webkitRelativePath.split('/').slice(1).join('/')) }))
     .filter((e) => e.dest);
-  if (!list.some((e) => e.dest === EXE)) throw new Error('No game executable (Cricket07.cracked.exe or Crack/cricket07.exe) in that folder.');
+  if (!list.some((e) => e.dest === EXE)) throw new Error('No compatible game executable (Cricket07.exe) in that folder.');
   if (!list.some((e) => e.dest.toLowerCase() === 'data/data.gob')) throw new Error('No Data/data.gob in that folder.');
   const root = await navigator.storage.getDirectory();
   try { await root.removeEntry(OPFS_DIR, { recursive: true }); } catch {}

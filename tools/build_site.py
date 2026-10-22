@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the public site from an explicit allowlist. Never copy game/ or secrets."""
+"""Build from an allowlist; include only the explicitly supplied, verified EXE."""
 import argparse
 import hashlib
 import json
@@ -12,6 +12,7 @@ DIST = ROOT / 'dist'
 SOURCE_PATHS = ['README.md', 'LICENSE', 'LICENSES', '.gitignore', 'netlify.toml', 'site', 'tools', 'mod-tools', 'mods', 'engine', 'content']
 FORBIDDEN_SUFFIXES = {'.exe', '.gob', '.big', '.viv', '.vp6', '.wasm', '.pyc'}
 EXCLUDED_NAMES = {'.git', '.netlify', '__pycache__', '.DS_Store', 'dist', 'node_modules'}
+GAME_EXE_SHA256 = 'd776dba0cc506b968f7d228e036cf42aeb4abe45a8d1ad0d7226cdebf91553a2'
 
 def source_files():
     for name in SOURCE_PATHS:
@@ -30,7 +31,11 @@ def source_files():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--runtime', required=True, type=Path, help='Directory containing your compiled cricket07.js and cricket07.wasm')
+    parser.add_argument('--game-exe', required=True, type=Path, help='The explicitly supplied original Cricket 07 executable for this release')
     args = parser.parse_args()
+    executable = args.game_exe.resolve()
+    if not executable.is_file() or hashlib.sha256(executable.read_bytes()).hexdigest() != GAME_EXE_SHA256:
+        parser.error('The EXE does not match the explicitly supplied Cricket 07 build. No executable will be published.')
     runtime = args.runtime.resolve()
     for name in ['cricket07.js', 'cricket07.wasm']:
         if not (runtime / name).is_file():
@@ -60,6 +65,8 @@ def main():
         assert hashlib.sha256(body).hexdigest() == resource['sha256']
     downloads = DIST / 'downloads'
     downloads.mkdir()
+    shutil.copy2(executable, downloads / 'Cricket07.exe')
+    (downloads / 'Cricket07.exe.sha256').write_text(GAME_EXE_SHA256 + '  Cricket07.exe\n')
     shutil.copy2(ROOT / 'LICENSE', downloads / 'LICENSE.txt')
     prompts = json.loads((ROOT / 'site/prompts.json').read_text())
     prompt_markdown = '# Customize Cricket 07 with a coding assistant\n\nDownload the project ZIP, extract it and open that folder in Claude Code, Codex or another file-editing coding assistant. Fill in the brackets. These starter prompts describe the changes you can make; they are not a transcript of how the original port was built.\n\n'
@@ -77,14 +84,17 @@ def main():
         archive.write(ROOT / 'tools/serve.py', 'cricket07-browser-build/serve.py')
         archive.write(ROOT / 'content/LOCAL-PLAY.md', 'cricket07-browser-build/START-HERE.md')
         archive.write(ROOT / 'LICENSE', 'cricket07-browser-build/LICENSE')
+        archive.write(executable, 'cricket07-browser-build/game-executable/Cricket07.exe')
     with zipfile.ZipFile(downloads / 'cricket07-micky-source.zip') as archive:
         assert archive.testzip() is None
         assert not any(Path(name).suffix.lower() in FORBIDDEN_SUFFIXES for name in archive.namelist())
     for file in DIST.rglob('*'):
         if file.is_file():
             assert not any(part.startswith('.env') or part in EXCLUDED_NAMES for part in file.relative_to(DIST).parts)
-            assert file.suffix.lower() not in {'.exe', '.gob', '.big', '.viv', '.vp6'}
-    print(f'Built {len(list(DIST.rglob("*")))} paths; verified {len(manifest["resources"])} mod resources. Original EA game files excluded.')
+            if file.suffix.lower() == '.exe':
+                assert file == downloads / 'Cricket07.exe' and hashlib.sha256(file.read_bytes()).hexdigest() == GAME_EXE_SHA256
+            assert file.suffix.lower() not in {'.gob', '.big', '.viv', '.vp6'}
+    print(f'Built {len(list(DIST.rglob("*")))} paths; verified {len(manifest["resources"])} mod resources and the requested EXE. Data/Audio game archives excluded.')
     for file in downloads.iterdir():
         print(f'{file.name}: {file.stat().st_size / 1e6:.1f} MB')
 

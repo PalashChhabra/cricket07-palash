@@ -137,6 +137,17 @@ function streamed(bytes, status = 206, range = 'bytes 2-3/4') {
   } }) } };
 }
 
+test('folder import accepts the downloadable EXE filename and excludes unrelated files', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'site', 'play', 'c07.js'), 'utf8');
+  const context = { EXE: 'Cricket07.cracked.exe' };
+  vm.runInNewContext(source.slice(source.indexOf('function wanted('), source.indexOf('async function importFromPicker(')), context);
+  assert.equal(context.wanted('Cricket07.exe'), 'Cricket07.cracked.exe');
+  assert.equal(context.wanted('Cricket07.cracked.exe'), 'Cricket07.cracked.exe');
+  assert.equal(context.wanted('Data/data.gob'), 'Data/data.gob');
+  assert.equal(context.wanted('private-notes.json'), null);
+  assert.equal(context.wanted('unrelated.exe'), null);
+});
+
 test('installer resumes partial files using Range and verifies all bytes', async () => {
   const runner = harness('install-worker.js', [1, 2], streamed([3, 4]));
   await runner.send({ base: 'game/', directory: 'test', path: 'Data/test', size: 4 });

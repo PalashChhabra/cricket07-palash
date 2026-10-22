@@ -34,3 +34,9 @@
   to = "/not-included.txt"
   status = 404
   force = true
+
+[[headers]]
+  for = "/downloads/Cricket07.exe"
+  [headers.values]
+    Content-Disposition = "attachment; filename=\"Cricket07.exe\""
+    Cache-Control = "public, max-age=300"
