@@ -33,7 +33,7 @@ Help me personalize this Cricket 07 project page.
 
 My name is [NAME]. My Instagram is [URL], my X is [URL], and my work is [SHORT BIO + WEBSITE]. Use only the details I give you.
 
-Read README.md and site/ before editing. Keep the game launcher, downloads, prompts, roster explorer and required original-project credits working. Preserve the upstream MIT license. Do not include private files, credentials or additional EA game archives in a download or deployment. Keep the explicitly supplied original EXE separate from the MIT-licensed source.
+Read README.md and site/ before editing. Keep the game launcher, downloads, prompts, roster explorer and required original-project credits working. Preserve the upstream MIT license. Do not include private files or credentials. Keep the hosted resource manifest and resumable automatic download flow working. Keep the explicitly supplied original EXE separate from the MIT-licensed source.
 
 Create a distinctive responsive design with readable type, keyboard access and reduced-motion support. Run tools/build_site.py with a compatible compiled runtime, check desktop and mobile, test every download and copy button, and report the actual deployment URL only after it is verified.
 ```

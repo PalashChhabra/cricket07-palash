@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build from an allowlist; include only the explicitly supplied, verified EXE."""
+"""Build the public site, verified game downloads, and separate source/runtime kits."""
 import argparse
 import hashlib
 import json
@@ -13,6 +13,34 @@ SOURCE_PATHS = ['README.md', 'LICENSE', 'LICENSES', '.gitignore', 'netlify.toml'
 FORBIDDEN_SUFFIXES = {'.exe', '.gob', '.big', '.viv', '.vp6', '.wasm', '.pyc'}
 EXCLUDED_NAMES = {'.git', '.netlify', '__pycache__', '.DS_Store', 'dist', 'node_modules'}
 GAME_EXE_SHA256 = 'd776dba0cc506b968f7d228e036cf42aeb4abe45a8d1ad0d7226cdebf91553a2'
+PUBLIC_GAME_BASE = 'https://cricket07-whymickywhy.netlify.app/play/game/'
+
+def stage_game_assets(directory):
+    directory = directory.resolve()
+    original = json.loads((directory / 'manifest.json').read_text())
+    target = DIST / 'play/game'
+    pieces = target / 'chunks'
+    pieces.mkdir(parents=True)
+    files = []
+    for item in original['files']:
+        source = (directory / item['path']).resolve()
+        if not source.is_relative_to(directory) or not source.is_file() or source.stat().st_size != item['size']:
+            raise ValueError('Missing or mismatched game file: ' + item['path'])
+        chunks = []
+        sha = hashlib.sha256()
+        offset = 0
+        with source.open('rb') as stream:
+            while data := stream.read(8 * 1024 * 1024):
+                chunk_hash = hashlib.sha256(data).hexdigest()
+                name = chunk_hash + '.bin'
+                if not (pieces / name).exists(): (pieces / name).write_bytes(data)
+                chunks.append(dict(path='chunks/' + name, offset=offset, size=len(data), sha256=chunk_hash))
+                sha.update(data); offset += len(data)
+        files.append(dict(path=item['path'], size=item['size'], sha256=sha.hexdigest(), chunks=chunks))
+    signature = json.dumps([(f['path'], f['sha256']) for f in files], separators=(',', ':')).encode()
+    manifest = dict(version='hosted-' + hashlib.sha256(signature).hexdigest()[:16], files=files)
+    (target / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    return manifest
 
 def source_files():
     for name in SOURCE_PATHS:
@@ -32,6 +60,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--runtime', required=True, type=Path, help='Directory containing your compiled cricket07.js and cricket07.wasm')
     parser.add_argument('--game-exe', required=True, type=Path, help='The explicitly supplied original Cricket 07 executable for this release')
+    parser.add_argument('--game-dir', required=True, type=Path, help='The explicitly supplied game folder and its file manifest for automatic browser downloads')
     args = parser.parse_args()
     executable = args.game_exe.resolve()
     if not executable.is_file() or hashlib.sha256(executable.read_bytes()).hexdigest() != GAME_EXE_SHA256:
@@ -53,6 +82,7 @@ def main():
         shutil.copy2(runtime / name, build / name)
     for license_file in (ROOT / 'LICENSES').glob('*.txt'):
         shutil.copy2(license_file, DIST / 'assets/fonts' / license_file.name)
+    game_manifest = stage_game_assets(args.game_dir)
     target = DIST / 'play/mods/modern-2026'
     target.mkdir(parents=True)
     for name in ['manifest.json', 'modern-pack.bin']:
@@ -79,8 +109,12 @@ def main():
             archive.write(file, Path('cricket07-micky-source') / rel)
     with zipfile.ZipFile(downloads / 'cricket07-browser-build.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         for file in sorted(DIST.rglob('*')):
-            if file.is_file() and 'downloads' not in file.relative_to(DIST).parts:
+            if file.is_file() and 'downloads' not in file.relative_to(DIST).parts and not file.is_relative_to(DIST / 'play/game'):
                 archive.write(file, Path('cricket07-browser-build') / file.relative_to(DIST))
+        portable_manifest = json.loads(json.dumps(game_manifest))
+        for file in portable_manifest['files']:
+            for chunk in file['chunks']: chunk['path'] = PUBLIC_GAME_BASE + chunk['path']
+        archive.writestr('cricket07-browser-build/play/game/manifest.json', json.dumps(portable_manifest, indent=2))
         archive.write(ROOT / 'tools/serve.py', 'cricket07-browser-build/serve.py')
         archive.write(ROOT / 'content/LOCAL-PLAY.md', 'cricket07-browser-build/START-HERE.md')
         archive.write(ROOT / 'LICENSE', 'cricket07-browser-build/LICENSE')
@@ -94,7 +128,7 @@ def main():
             if file.suffix.lower() == '.exe':
                 assert file == downloads / 'Cricket07.exe' and hashlib.sha256(file.read_bytes()).hexdigest() == GAME_EXE_SHA256
             assert file.suffix.lower() not in {'.gob', '.big', '.viv', '.vp6'}
-    print(f'Built {len(list(DIST.rglob("*")))} paths; verified {len(manifest["resources"])} mod resources and the requested EXE. Data/Audio game archives excluded.')
+    print(f'Built {len(list(DIST.rglob("*")))} paths; verified {len(manifest["resources"])} mod resources and the requested EXE. Hosted {len(game_manifest["files"])} game files ({sum(f["size"] for f in game_manifest["files"])/1e6:.0f} MB) as verified chunks.')
     for file in downloads.iterdir():
         print(f'{file.name}: {file.stat().st_size / 1e6:.1f} MB')
 

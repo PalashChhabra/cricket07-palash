@@ -6,18 +6,18 @@ This extends [Dhaiwat Pandya's Cricket 07 browser port](https://github.com/Dhaiw
 
 ## What's here
 
-- `site/`: responsive landing page and browser launcher. The public launcher imports the visitor's own game files; it does not download an original EA game archive.
+- `site/`: responsive landing page and browser launcher. The public launcher downloads hosted game resources automatically into OPFS browser storage, using resumable, SHA-256 verified chunks.
 - `engine/`: the upstream translator, host, runtime and build tools, pinned by the included source snapshot.
 - `mods/modern-2026/`: eleven teams, 200 distinct player records, native-resource manifest, fan kit sources and official squad-reference snapshots.
 - `mod-tools/`: archive/texture helpers and roster builder. The builder reads `game/Data/data.gob` from your own copy. Python dependencies: Pillow (DDS encoding), CairoSVG and a working Cairo library.
 - `tools/`: publication packaging and local serving.
 - `content/`: copyable prompts and local-play instructions.
 
-Original EA executables, Data/Audio archives, generated game C code and compiled WebAssembly are not included in the source repository or source ZIP. The separately hosted browser-build ZIP includes the prebuilt runtime, mod resources and the explicitly requested game EXE in a separate `game-executable/` folder. The same EXE is available as its own download. Players still supply the matching Data/Audio folders. The supplied file is the compatible unprotected build used by this project, not a claim of a signed retail installer. Do not mistake the upstream MIT license for a license to redistribute EA's commercial game assets or team/player trademarks.
+Original EA executables, Data/Audio archives, generated game C code and compiled WebAssembly are not included in the source repository or source ZIP. The separately hosted browser-build ZIP includes the prebuilt runtime, mod resources and the explicitly requested game EXE in a separate `game-executable/` folder. The same EXE is available as its own download. The browser downloads matching resources automatically from the hosted edition. The standalone Windows EXE still needs its matching Data/Audio folders. The supplied file is the compatible unprotected build used by this project, not a claim of a signed retail installer. Do not mistake the upstream MIT license for a license to redistribute EA's commercial game assets or team/player trademarks.
 
 ## Play
 
-Use a desktop/laptop with keyboard/controller and a WebGPU-capable browser. Import a compatible Cricket 07 game folder once. Files remain local to that browser. For the modern pack, find India ODI 2026 and the IPL teams in **Other**. OG India remains in **International**. Eleven A-team/invitational slots are repurposed in expanded mode; Original teams restores every secondary side too.
+Use a desktop/laptop with keyboard/controller and a WebGPU-capable browser. Game files download automatically on first launch (about 1.17 GB), resume after interruptions and remain cached in that browser. No folder picker is required. For the modern pack, find India ODI 2026 and the IPL teams in **Other**. OG India remains in **International**. Eleven A-team/invitational slots are repurposed in expanded mode; Original teams restores every secondary side too.
 
 Native save files are retained locally with backup/restore controls. There is no instant save-state system or new save-anywhere feature. The public edition is solo/local play; upstream multiplayer requires deploying its own room service. Do not expose the local tunnel server or proxy someone else's assets or signaling endpoint as a substitute.
 
@@ -26,11 +26,11 @@ Native save files are retained locally with backup/restore controls. There is no
 First build a compatible browser runtime from your own game executable by following `engine/README.md`. Then:
 
 ```sh
-python3 tools/build_site.py --runtime /path/to/compiled/build --game-exe /path/to/compatible/Cricket07.exe
+python3 tools/build_site.py --runtime /path/to/compiled/build --game-exe /path/to/compatible/Cricket07.exe --game-dir /path/to/game
 python3 tools/serve.py --directory dist --port 8086
 ```
 
-Open http://localhost:8086. The build creates `dist/`, a source ZIP, all prompts as Markdown and a separate ready-to-run browser-build ZIP. It uses an allowlist, rejects game Data/Audio archives and secret-file names, and allows exactly the explicitly supplied EXE after SHA-256 verification. The source ZIP retains the complete upstream MIT license and the original engine source. The complete game is not included; the EXE alone cannot replace its Data/Audio folders.
+Open http://localhost:8086. The build creates `dist/`, a source ZIP, all prompts as Markdown and a separate ready-to-run browser-build ZIP. It uses an allowlist, rejects secret-file names, verifies the explicitly supplied EXE, and stages only files listed in the supplied game manifest as content-addressed 8 MB chunks. The source ZIP retains the complete upstream MIT license and the original engine source. Original resources are hosted as browser-download chunks, separate from the source ZIP. The portable browser ZIP references these hosted chunks and needs internet on its first launch.
 
 To edit the roster, put your own original archive at `game/Data/data.gob`, then run `python3 mod-tools/build_modern_2026.py` in a Pillow/CairoSVG environment. Never overwrite the original archive. The builder checks 943 protected OG player records and 52 protected squads. Fan-created kits and proxy/generic player abilities do not claim authentic 2026 faces or official ratings. Old commentary/stadiums remain.
 
@@ -42,7 +42,7 @@ These checks cover archive restoration, pack upgrades, rejected corrupt download
 
 ## Publish to Netlify
 
-Publish **only `dist/`**, never the surrounding OYT workspace or the original game folder. `netlify.toml` sets the cross-origin isolation headers required by WebAssembly threads and WebGPU. The landing page is mobile-friendly; the game has no touch controls. Build locally, then use `netlify deploy --dir=dist --no-build` for a preview and `--prod` after verification. Keep `.netlify/` and credential files untracked. This manual build does not need a server, database, analytics account, email gate or private API keys.
+Publish **only `dist/`**, never the surrounding OYT workspace or the original game folder. `netlify.toml` sets the cross-origin isolation headers required by WebAssembly threads and WebGPU. The landing page is mobile-friendly; the game has no touch controls. Build locally, then use `netlify deploy --dir=dist --no-build` for a preview and `--prod` after verification. Keep `.netlify/` and credential files untracked. The game runs entirely in the browser and needs no game server or email gate.
 
 Netlify's standard hostname is `cricket07-whymickywhy.netlify.app`. A nested name such as `cricket07.whymickywhy.netlify.com` is not a normal Netlify site hostname. For a custom nested hostname, use a domain you own and configure DNS. For high traffic, review hosting bandwidth/credit usage before adding large automatic game downloads.
 
@@ -64,4 +64,8 @@ Keep the included upstream `LICENSE` with all redistributed code. The source bun
 
 The expanded profile identifies Karan Singh / Micky as a Clearlyy co-founder. The photo and work description are sourced from the public Clearlyy site; the requested LinkedIn profile is linked directly. LinkedIn page contents were unavailable to the research tools, so no LinkedIn-only employment history was invented. Photo source: https://clearlyy.io/__l5e/assets-v1/c1c1feff-9308-4f39-9bd6-06073d5403ab/karan-formal.jpg .
 
-The separately supplied Windows game executable is 4,354,048 bytes, SHA-256 `d776dba0cc506b968f7d228e036cf42aeb4abe45a8d1ad0d7226cdebf91553a2`. It is excluded from the MIT source ZIP and source repository. Its original local filename was `Cricket07.cracked.exe`; the public filename is `Cricket07.exe`. Its ownership is separate from the open-source software license. No original game Data or Audio archives are bundled. The modern team/kit pack applies to the browser build, not to this EXE by itself.
+The separately supplied Windows game executable is 4,354,048 bytes, SHA-256 `d776dba0cc506b968f7d228e036cf42aeb4abe45a8d1ad0d7226cdebf91553a2`. It is excluded from the MIT source ZIP and source repository. Its original local filename was `Cricket07.cracked.exe`; the public filename is `Cricket07.exe`. Its ownership is separate from the open-source software license. Original Data and Audio resources are hosted separately as verified chunks for automatic browser downloads, and are excluded from the source repository and ZIP. The modern team/kit pack applies to the browser build, not to this EXE by itself.
+
+## Visitor analytics
+
+Cloudflare Web Analytics is installed on the landing page and game launcher, registered to `cricket07-whymickywhy.netlify.app` in Micky's Cloudflare account. The public beacon token identifies the site; it does not grant dashboard access. View visits and page views privately at https://dash.cloudflare.com/3fb775a6edefa8f3b530ca6327c14289/web-analytics/overview?siteTag~in=3ebfb4873c6948d4a17d69b7f9cf8e09&excludeBots=Yes . Counts start after installation and may take time to appear; blocked scripts and browsers that block telemetry can reduce counts. No advertising pixel is installed.

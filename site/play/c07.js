@@ -58,7 +58,7 @@ async function existingSize(dir, relPath) {
 }
 
 // Download in a worker so writes land directly in the file instead of a temporary copy.
-function downloadFile(rel, size, onBytes) {
+function downloadFile(rel, size, onBytes, chunks) {
   return new Promise((resolve, reject) => {
     const worker = new Worker('install-worker.js');
     const finish = (error) => { worker.terminate(); error ? reject(error) : resolve(); };
@@ -68,7 +68,7 @@ function downloadFile(rel, size, onBytes) {
       else onBytes(data.bytes);
     };
     worker.onerror = (event) => finish(new Error(event.message || 'Game download worker failed.'));
-    worker.postMessage({ base: GAME_BASE, directory: OPFS_DIR, path: rel, size });
+    worker.postMessage({ base: GAME_BASE, directory: OPFS_DIR, path: rel, size, chunks });
   });
 }
 
@@ -96,9 +96,9 @@ async function syncFromServer(manifest, compact = false) {
     for (let attempt = 1; ; attempt++) {
       try {
         await downloadFile(file.path, file.size, (bytes) => {
-          status(`Installing game: ${mb(done + bytes)} / ${mb(total)} MB`);
+          status(`Downloading game files: ${mb(done + bytes)} / ${mb(total)} MB. Saved in this browser for next time.`);
           $('progress').value = (done + bytes) / total;
-        });
+        }, file.chunks);
         done += file.size;
         break;
       } catch (error) {
@@ -117,7 +117,6 @@ async function syncFromServer(manifest, compact = false) {
 }
 
 async function fetchManifest() {
-  if (window.C07_PUBLIC) return null; // Public build imports the visitor’s own files; no hosted game archive.
   try {
     const res = await fetch(GAME_BASE + 'manifest.json', { cache: 'no-store' });
     if (!res.ok) return null;
@@ -439,6 +438,10 @@ async function boot() {
 
   const marker = await readMarker();
   const manifest = await fetchManifest();
+  if (window.C07_PUBLIC && !manifest && !marker) {
+    status('The hosted game files could not be reached. Check your connection and reload to try again.');
+    return;
+  }
   if (manifest && marker?.version !== manifest.version) {
     // first visit on this device (or the hosted files changed): download, resuming any partial copy
     try { await syncFromServer(manifest); }

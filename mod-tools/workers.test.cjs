@@ -21,10 +21,10 @@ function harness(script, initial, response, options = {}) {
   };
   const dir = { getDirectoryHandle: async () => dir, getFileHandle: async () => ({ createSyncAccessHandle: async () => handle }) };
   const context = {
-    Uint8Array, DataView, crypto: webcrypto,
+    Uint8Array, DataView, URL, crypto: webcrypto,
     navigator: { storage: { getDirectory: async () => dir } },
     self: { postMessage: message => messages.push(message) },
-    fetch: async (url, init) => { requests.push({ url, init }); return response; },
+    fetch: async (url, init) => { requests.push({ url, init }); return typeof response === 'function' ? response(url, init) : response; },
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'site', 'play', script), 'utf8'), context);
   return { send: data => context.self.onmessage({ data }), messages, requests, bytes: () => bytes, closed: () => closed };
@@ -150,7 +150,7 @@ test('folder import accepts the downloadable EXE filename and excludes unrelated
 
 test('installer resumes partial files using Range and verifies all bytes', async () => {
   const runner = harness('install-worker.js', [1, 2], streamed([3, 4]));
-  await runner.send({ base: 'game/', directory: 'test', path: 'Data/test', size: 4 });
+  await runner.send({ base: 'https://example.test/game/', directory: 'test', path: 'Data/test', size: 4 });
   assert.equal(runner.requests[0].init.headers.Range, 'bytes=2-');
   assert.deepEqual(Array.from(runner.bytes()), [1, 2, 3, 4]);
   assert.equal(runner.messages.at(-1).done, true);
@@ -159,14 +159,14 @@ test('installer resumes partial files using Range and verifies all bytes', async
 
 test('installer restarts safely if the server ignores Range', async () => {
   const runner = harness('install-worker.js', [99, 98], streamed([1, 2, 3, 4], 200));
-  await runner.send({ base: 'game/', directory: 'test', path: 'Data/test', size: 4 });
+  await runner.send({ base: 'https://example.test/game/', directory: 'test', path: 'Data/test', size: 4 });
   assert.deepEqual(Array.from(runner.bytes()), [1, 2, 3, 4]);
   assert.equal(runner.messages.at(-1).done, true);
 });
 
 test('installer reports quota exhaustion and closes its file handle', async () => {
   const runner = harness('install-worker.js', [1, 2], streamed([3, 4]), { quota: true });
-  await runner.send({ base: 'game/', directory: 'test', path: 'Data/test', size: 4 });
+  await runner.send({ base: 'https://example.test/game/', directory: 'test', path: 'Data/test', size: 4 });
   assert.equal(runner.messages.at(-1).name, 'QuotaExceededError');
   assert.ok(runner.closed());
 });
@@ -204,4 +204,46 @@ test('quota recovery discards only cached movies, completes required files and k
   assert.deepEqual(removed, ['intro.vp6']);
   assert.deepEqual(marker, { version: 'v1', compact: true });
   assert.equal(installed.get('Data/game.bin'), 4);
+});
+
+async function hostedChunks() {
+  return Promise.all([[1, 2], [3, 4]].map(async (data, index) => ({
+    path: `chunks/${index}.bin`, offset: index * 2, size: 2,
+    sha256: Buffer.from(await webcrypto.subtle.digest('SHA-256', Uint8Array.from(data))).toString('hex'),
+  })));
+}
+
+test('hosted chunks resume within a chunk and retain completed chunks', async () => {
+  const chunks = await hostedChunks();
+  const runner = harness('install-worker.js', [1, 2, 3], streamed([4], 206, 'bytes 1-1/2'));
+  await runner.send({ base: 'https://example.test/game/', directory: 'test', path: 'Data/test', size: 4, chunks });
+  assert.equal(runner.requests.length, 1);
+  assert.equal(runner.requests[0].url, 'https://example.test/game/chunks/1.bin');
+  assert.equal(runner.requests[0].init.headers.Range, 'bytes=1-');
+  assert.deepEqual(Array.from(runner.bytes()), [1, 2, 3, 4]);
+  assert.equal(runner.messages.at(-1).done, true);
+});
+
+test('hosted chunks only restart the interrupted chunk when Range is ignored', async () => {
+  const chunks = await hostedChunks();
+  const runner = harness('install-worker.js', [1, 2, 99], streamed([3, 4], 200));
+  await runner.send({ base: 'https://example.test/game/', directory: 'test', path: 'Data/test', size: 4, chunks });
+  assert.deepEqual(Array.from(runner.bytes()), [1, 2, 3, 4]);
+  assert.equal(runner.messages.at(-1).done, true);
+});
+
+test('hosted chunks reject corruption without discarding earlier chunks', async () => {
+  const chunks = await hostedChunks();
+  const runner = harness('install-worker.js', [1, 2], streamed([99, 4], 200));
+  await runner.send({ base: 'https://example.test/game/', directory: 'test', path: 'Data/test', size: 4, chunks });
+  assert.match(runner.messages.at(-1).error, /integrity/);
+  assert.deepEqual(Array.from(runner.bytes()), [1, 2]);
+});
+
+test('hosted chunks reject gaps before downloading', async () => {
+  const chunks = await hostedChunks(); chunks[1].offset = 3;
+  const runner = harness('install-worker.js', [], {});
+  await runner.send({ base: 'https://example.test/game/', directory: 'test', path: 'Data/test', size: 4, chunks });
+  assert.match(runner.messages.at(-1).error, /invalid hosted file manifest/);
+  assert.equal(runner.requests.length, 0);
 });

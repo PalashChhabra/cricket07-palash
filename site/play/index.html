@@ -187,7 +187,7 @@
       <!-- loading: browser checks, the first-visit download, errors -->
       <section id="view-loading" class="view">
         <div class="brand"><img src="cricket07-logo.png" width="520" height="306" alt="EA Sports Cricket 07"></div>
-        <p id="status">Checking your browser… This build uses your own Cricket 07 files.</p>
+        <p id="status">Checking your browser… Game files download automatically on your first visit.</p>
         <progress id="progress" class="hidden" max="1" value="0"></progress>
         <div>
           <label id="pick" class="btn hidden" style="margin-top:16px">Choose my game folder
@@ -344,5 +344,7 @@
 <script src="roster.js"></script>
 <script src="saves.js"></script>
 <script src="c07.js"></script>
+<!-- Cloudflare Web Analytics: public site token; account access stays private. -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"c8448a382b5d45aeaf5aaa3588226fa5"}'></script>
 </body>
 </html>
