@@ -1,0 +1,24 @@
+name: Cricket 07 source checks
+
+on:
+  push:
+    branches:
+      - feature/ipl-netplay-feasibility
+  pull_request:
+
+jobs:
+  roster-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check site/play/c07.js
+          node --check site/play/roster.js
+          node --check site/play/modern-worker.js
+          node --check engine/server/worker.js
+      - name: Test roster handshake
+        run: node --test mod-tools/netplay-roster.test.cjs
