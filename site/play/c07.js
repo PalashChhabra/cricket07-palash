@@ -8,6 +8,7 @@
 //
 // URL options: ?mute (no audio) ?fps (frame rate in the console) ?log (host log) ?autoplay
 //              ?game=<url> (where manifest.json and the files live; default "game/") ?join=<room code>
+//              ?netplay=<https://worker.example> (optional Cloudflare room service; defaults to same origin)
 //
 // Online play (netplay.js, host/netplay.c): players meet in a room on the Worker; when the host starts,
 // every page boots the game in deterministic lockstep mode with fresh saves, and only pad inputs travel.
@@ -20,6 +21,7 @@ const OPFS_DIR = 'c07game';
 const EXE = 'Cricket07.cracked.exe';
 const MARKER = '.installed.json';   // { version } once every file is complete
 const GAME_BASE = new URL(params.get('game') || 'game/', location.href).href.replace(/\/?$/, '/');
+const NETPLAY_BASE = new URL(params.get('netplay') || './', location.href).href.replace(/\/?$/, '/');
 const status = (t) => { $('status').textContent = t; };
 // the launcher's screens (index.html): loading, home, online, lobby
 const show = (view) => { for (const v of document.querySelectorAll('#panel .view')) v.classList.toggle('hidden', v.id !== 'view-' + view); };
@@ -535,11 +537,11 @@ function setupOnline() {
     msg('Connecting…');
     let iceServers;   // from the first ticket (TURN credentials last a day)
     const roomUrl = async () => {   // a fresh ticket each time (they expire after an hour)
-      const res = await fetch('_netplay_ticket', { cache: 'no-store' });
+      const res = await fetch(NETPLAY_BASE + '_netplay_ticket', { cache: 'no-store' });
       if (!res.ok) throw new Error('Online play is not available on this server.');
       const { ticket, iceServers: ice } = await res.json();
       iceServers ??= ice;
-      const url = new URL(`netplay/${code}?ticket=${encodeURIComponent(ticket)}`, location.href);
+      const url = new URL(`netplay/${code}?ticket=${encodeURIComponent(ticket)}`, NETPLAY_BASE);
       if (create) { url.searchParams.set('create', '1'); url.searchParams.set('region', $('np-region').value); create = false; }
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       return url.href;
@@ -548,7 +550,7 @@ function setupOnline() {
     try { url = await roomUrl(); } catch (e) { msg(e.message); return; }
     const baseInvite = window.__c07PublicUrl || location.href;
     const invite = new URL(baseInvite);
-    invite.search = `?join=${code}`;
+    invite.search = `?join=${code}` + (params.get('netplay') ? `&netplay=${encodeURIComponent(params.get('netplay'))}` : '');
     $('np-room').textContent = code;
     $('invite').textContent = invite.href;
     let version;
@@ -563,7 +565,7 @@ function setupOnline() {
         if (l.started) { msg('That game has already started.'); leave(); return; }
         if ($('view-lobby').classList.contains('hidden')) { msg(''); show('lobby'); }
         const shareInvite = new URL(window.__c07PublicUrl || location.href);
-        shareInvite.search = `?join=${code}`;
+        shareInvite.search = `?join=${code}` + (params.get('netplay') ? `&netplay=${encodeURIComponent(params.get('netplay'))}` : '');
         $('invite').textContent = shareInvite.href;
         $('np-colo').textContent = window.__c07PublicUrl
           ? `Public URL: ${window.__c07PublicUrl.replace(/^https?:\/\//, '')}`
