@@ -21,9 +21,9 @@
   update();
   window.C07Roster = {
     async version() {
-      const data = await manifest;
       const mode = select.value;
       if (mode === 'original') return 'original';
+      const data = await manifest;
       if (!/^[a-f0-9]{64}$/i.test(data.sha256 || '')) throw new Error('The modern-team pack has no valid SHA-256 identity.');
       return `modern-2026:${data.sha256}`;
     },
