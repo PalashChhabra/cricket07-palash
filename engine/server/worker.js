@@ -148,6 +148,7 @@ export class NetplayRoom {
     }
     if (msg.t === 'start' && me.slot === 0 && !(await this.ctx.storage.get('started'))) {
       const peers = this.peers();
+      if (peers.length !== 2) { this.send(ws, { t: 'error', msg: 'A 1v1 match requires exactly two connected players.' }); return; }
       const versions = new Set(peers.map((p) => p.version));
       if (versions.size !== 1 || !peers.every(p => p.version)) { this.send(ws, { t: 'error', msg: 'Game version or IPL roster mismatch. Both players must use the same build, roster selection and pack; reload after updating.' }); return; }
       const slots = peers.map((p) => p.slot).sort((a, b) => a - b);
