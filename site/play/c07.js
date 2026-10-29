@@ -8,6 +8,7 @@
 //
 // URL options: ?mute (no audio) ?fps (frame rate in the console) ?log (host log) ?autoplay
 //              ?game=<url> (where manifest.json and the files live; default "game/") ?join=<room code>
+//              ?netplay=<https://worker.example> (optional Cloudflare room service; defaults to same origin)
 //
 // Online play (netplay.js, host/netplay.c): players meet in a room on the Worker; when the host starts,
 // every page boots the game in deterministic lockstep mode with fresh saves, and only pad inputs travel.
@@ -20,6 +21,7 @@ const OPFS_DIR = 'c07game';
 const EXE = 'Cricket07.cracked.exe';
 const MARKER = '.installed.json';   // { version } once every file is complete
 const GAME_BASE = new URL(params.get('game') || 'game/', location.href).href.replace(/\/?$/, '/');
+const NETPLAY_BASE = new URL(params.get('netplay') || './', location.href).href.replace(/\/?$/, '/');
 const status = (t) => { $('status').textContent = t; };
 // the launcher's screens (index.html): loading, home, online, lobby
 const show = (view) => { for (const v of document.querySelectorAll('#panel .view')) v.classList.toggle('hidden', v.id !== 'view-' + view); };
@@ -411,7 +413,6 @@ async function boot() {
   if (!navigator.storage?.getDirectory) { status('This browser has no Origin Private File System.'); return; }
   let onlineReady = false;
   const goOnline = () => {
-    if (window.C07_PUBLIC) { status("This public edition supports solo/local play."); return; }
     if (!onlineReady) { setupOnline(); onlineReady = true; }
     show('online');
     ($('np-code').value ? $('np-join') : $('np-name')).focus();
@@ -419,7 +420,7 @@ async function boot() {
   const ready = () => {
     show('home');
     readMarker().then(marker => { if (marker?.compact) $('save-status').textContent = 'Compact install: intro/tutorial movies omitted to save storage. Saved games are kept.'; });
-    if (!window.C07_PUBLIC && params.get('join')) goOnline();   // an invite link goes straight to joining
+    if (params.get('join')) goOnline();   // an invite link goes straight to joining
     if (params.has('autoplay')) $('play').click();
   };
   $('play').onclick = () => run().catch(fail);
@@ -513,7 +514,10 @@ async function buildVersion() {
   const wasm = await fetch('build/cricket07.wasm', { method: 'HEAD' }).catch(() => null);
   // the ETag comes back weak (W/"...") when the response is compressed: compare only its value
   const etag = (wasm?.headers.get('ETag') || '').replace(/^W\//, '').replace(/"/g, '');
-  return `${manifest?.version || 'local'}:${etag || wasm?.headers.get('Content-Length') || '?'}`;
+  // File size alone is not a safe multiplayer build identity: different WASM builds can share a size.
+  if (!manifest?.version || !etag) throw new Error('Multiplayer requires a hosted game manifest and a versioned WebAssembly build (ETag).');
+  const rosterVersion = await C07Roster.version();
+  return `${manifest.version}:${etag}:${rosterVersion}`;
 }
 
 function setupOnline() {
@@ -535,23 +539,26 @@ function setupOnline() {
     msg('Connecting…');
     let iceServers;   // from the first ticket (TURN credentials last a day)
     const roomUrl = async () => {   // a fresh ticket each time (they expire after an hour)
-      const res = await fetch('_netplay_ticket', { cache: 'no-store' });
+      const res = await fetch(NETPLAY_BASE + '_netplay_ticket', { cache: 'no-store' });
       if (!res.ok) throw new Error('Online play is not available on this server.');
       const { ticket, iceServers: ice } = await res.json();
       iceServers ??= ice;
-      const url = new URL(`netplay/${code}?ticket=${encodeURIComponent(ticket)}`, location.href);
+      const url = new URL(`netplay/${code}?ticket=${encodeURIComponent(ticket)}`, NETPLAY_BASE);
       if (create) { url.searchParams.set('create', '1'); url.searchParams.set('region', $('np-region').value); create = false; }
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       return url.href;
     };
     let url;
-    try { url = await roomUrl(); } catch (e) { msg(e.message); return; }
+    try { url = await roomUrl(); } catch (e) { msg(e.message + ' Configure a Cloudflare room Worker and use ?netplay=https://YOUR-WORKER.workers.dev'); return; }
     const baseInvite = window.__c07PublicUrl || location.href;
     const invite = new URL(baseInvite);
-    invite.search = `?join=${code}`;
+    invite.search = `?join=${code}` + (params.get('netplay') ? `&netplay=${encodeURIComponent(params.get('netplay'))}` : '');
     $('np-room').textContent = code;
     $('invite').textContent = invite.href;
-    const version = await buildVersion();
+    let version;
+    try { version = await buildVersion(); } catch (error) { msg(error.message); return; }
+    // Lock the selected roster while in a room: its hash is part of the handshake.
+    $('roster-mode').disabled = true;
     let session = null;
     const left = new Set();
     const me = client = C07Netplay.connect({
@@ -562,7 +569,7 @@ function setupOnline() {
         if (l.started) { msg('That game has already started.'); leave(); return; }
         if ($('view-lobby').classList.contains('hidden')) { msg(''); show('lobby'); }
         const shareInvite = new URL(window.__c07PublicUrl || location.href);
-        shareInvite.search = `?join=${code}`;
+        shareInvite.search = `?join=${code}` + (params.get('netplay') ? `&netplay=${encodeURIComponent(params.get('netplay'))}` : '');
         $('invite').textContent = shareInvite.href;
         $('np-colo').textContent = window.__c07PublicUrl
           ? `Public URL: ${window.__c07PublicUrl.replace(/^https?:\/\//, '')}`
@@ -588,7 +595,9 @@ function setupOnline() {
           $('np-players').appendChild(li);
         }
         $('np-hostctl').classList.toggle('hidden', !l.host);
-        $('np-start').disabled = l.players.length !== 2;
+        $('np-start').disabled = l.players.length !== 2 || !l.compatible;
+        if (l.players.length === 2 && !l.compatible) msg('Different game or IPL squad versions. Both players must select the same teams and refresh to update.');
+        else if (l.players.length === 2) msg('');
         if (l.players.length > 2) msg('This is a 1v1 game: only two players can be in the room.');
         lastPlayers = l.players;
         const auto = C07Netplay.autoDelay(l.players);
@@ -601,13 +610,14 @@ function setupOnline() {
       },
       onLeft(slot) { left.add(slot); },
       onError(e) { msg(e); setTimeout(() => { if ($('np-msg').textContent === e) msg(''); }, 8000); },
-      onClose() { if (!session && client === me) { client = null; show('online'); msg('Disconnected from the room.'); } },
+      onClose() { if (!session && client === me) { client = null; $('roster-mode').disabled = false; show('online'); msg('Disconnected from the room.'); } },
     });
   }
   function leave() {
     const c = client;
     client = null;
     c?.close();
+    if (!session) $('roster-mode').disabled = false;
     show('online');
   }
   $('np-leave').onclick = () => { leave(); msg(''); };

@@ -1,6 +1,6 @@
 # Cricket 07: modern teams
 
-Choose **OG + India 2026 + IPL teams** in the launcher, then **Play Solo**. On Team Select, assign the keyboard to a side with left/right, switch that side's category to **Other**, then use up/down to choose its team. The normal **International** category still contains OG India.
+Choose **OG + India 2026 + IPL teams** in the launcher, then **Play Solo** (or **Play Multiplayer** on a configured development deployment). On Team Select, assign the keyboard to a side with left/right, switch that side's category to **Other**, then use up/down to choose its team. The normal **International** category still contains OG India.
 
 This pack repurposes eleven secondary slots:
 
@@ -29,7 +29,7 @@ The build verifies that 52 other original squads, and 943 protected original pla
 
 ## Reversibility and saves
 
-Only the browser's cached archive is patched. Files under `game/` remain untouched. The worker verifies the downloaded payload and its stored bytes before changing archive pointers. Choosing **Original teams** restores all original pointers and archive length; it also brings back the secondary teams listed above. Online multiplayer uses Original teams.
+Only the browser's cached archive is patched. Files under `game/` remain untouched. The worker verifies the downloaded payload and its stored bytes before changing archive pointers. Choosing **Original teams** restores all original pointers and archive length; it also brings back the secondary teams listed above. The development branch supports attempting online multiplayer with modern teams when both peers use the same verified pack. This is not yet validated in a live two-browser match; the Cloudflare room service must be configured.
 
 Original and expanded modes have separate save folders. Use the game's native save menu; the launcher can back up and restore those save files. Instant emulator-style save states are not implemented.
 
