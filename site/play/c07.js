@@ -411,7 +411,6 @@ async function boot() {
   if (!navigator.storage?.getDirectory) { status('This browser has no Origin Private File System.'); return; }
   let onlineReady = false;
   const goOnline = () => {
-    if (window.C07_PUBLIC) { status("This public edition supports solo/local play."); return; }
     if (!onlineReady) { setupOnline(); onlineReady = true; }
     show('online');
     ($('np-code').value ? $('np-join') : $('np-name')).focus();
@@ -419,7 +418,7 @@ async function boot() {
   const ready = () => {
     show('home');
     readMarker().then(marker => { if (marker?.compact) $('save-status').textContent = 'Compact install: intro/tutorial movies omitted to save storage. Saved games are kept.'; });
-    if (!window.C07_PUBLIC && params.get('join')) goOnline();   // an invite link goes straight to joining
+    if (params.get('join')) goOnline();   // an invite link goes straight to joining
     if (params.has('autoplay')) $('play').click();
   };
   $('play').onclick = () => run().catch(fail);
@@ -513,7 +512,8 @@ async function buildVersion() {
   const wasm = await fetch('build/cricket07.wasm', { method: 'HEAD' }).catch(() => null);
   // the ETag comes back weak (W/"...") when the response is compressed: compare only its value
   const etag = (wasm?.headers.get('ETag') || '').replace(/^W\//, '').replace(/"/g, '');
-  return `${manifest?.version || 'local'}:${etag || wasm?.headers.get('Content-Length') || '?'}`;
+  const rosterVersion = await C07Roster.version();
+  return `${manifest?.version || 'local'}:${etag || wasm?.headers.get('Content-Length') || '?'}:${rosterVersion}`;
 }
 
 function setupOnline() {
@@ -551,7 +551,8 @@ function setupOnline() {
     invite.search = `?join=${code}`;
     $('np-room').textContent = code;
     $('invite').textContent = invite.href;
-    const version = await buildVersion();
+    let version;
+    try { version = await buildVersion(); } catch (error) { msg(error.message); return; }
     let session = null;
     const left = new Set();
     const me = client = C07Netplay.connect({
