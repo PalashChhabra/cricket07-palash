@@ -514,8 +514,10 @@ async function buildVersion() {
   const wasm = await fetch('build/cricket07.wasm', { method: 'HEAD' }).catch(() => null);
   // the ETag comes back weak (W/"...") when the response is compressed: compare only its value
   const etag = (wasm?.headers.get('ETag') || '').replace(/^W\//, '').replace(/"/g, '');
+  // File size alone is not a safe multiplayer build identity: different WASM builds can share a size.
+  if (!manifest?.version || !etag) throw new Error('Multiplayer requires a hosted game manifest and a versioned WebAssembly build (ETag).');
   const rosterVersion = await C07Roster.version();
-  return `${manifest?.version || 'local'}:${etag || wasm?.headers.get('Content-Length') || '?'}:${rosterVersion}`;
+  return `${manifest.version}:${etag}:${rosterVersion}`;
 }
 
 function setupOnline() {
