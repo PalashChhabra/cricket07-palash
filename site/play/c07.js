@@ -547,7 +547,7 @@ function setupOnline() {
       return url.href;
     };
     let url;
-    try { url = await roomUrl(); } catch (e) { msg(e.message); return; }
+    try { url = await roomUrl(); } catch (e) { msg(e.message + ' Configure a Cloudflare room Worker and use ?netplay=https://YOUR-WORKER.workers.dev'); return; }
     const baseInvite = window.__c07PublicUrl || location.href;
     const invite = new URL(baseInvite);
     invite.search = `?join=${code}` + (params.get('netplay') ? `&netplay=${encodeURIComponent(params.get('netplay'))}` : '');
@@ -593,7 +593,9 @@ function setupOnline() {
           $('np-players').appendChild(li);
         }
         $('np-hostctl').classList.toggle('hidden', !l.host);
-        $('np-start').disabled = l.players.length !== 2;
+        $('np-start').disabled = l.players.length !== 2 || !l.compatible;
+        if (l.players.length === 2 && !l.compatible) msg('Different game or IPL squad versions. Both players must select the same teams and refresh to update.');
+        else if (l.players.length === 2) msg('');
         if (l.players.length > 2) msg('This is a 1v1 game: only two players can be in the room.');
         lastPlayers = l.players;
         const auto = C07Netplay.autoDelay(l.players);
