@@ -555,6 +555,8 @@ function setupOnline() {
     $('invite').textContent = invite.href;
     let version;
     try { version = await buildVersion(); } catch (error) { msg(error.message); return; }
+    // Lock the selected roster while in a room: its hash is part of the handshake.
+    $('roster-mode').disabled = true;
     let session = null;
     const left = new Set();
     const me = client = C07Netplay.connect({
@@ -604,13 +606,14 @@ function setupOnline() {
       },
       onLeft(slot) { left.add(slot); },
       onError(e) { msg(e); setTimeout(() => { if ($('np-msg').textContent === e) msg(''); }, 8000); },
-      onClose() { if (!session && client === me) { client = null; show('online'); msg('Disconnected from the room.'); } },
+      onClose() { if (!session && client === me) { client = null; $('roster-mode').disabled = false; show('online'); msg('Disconnected from the room.'); } },
     });
   }
   function leave() {
     const c = client;
     client = null;
     c?.close();
+    if (!session) $('roster-mode').disabled = false;
     show('online');
   }
   $('np-leave').onclick = () => { leave(); msg(''); };
