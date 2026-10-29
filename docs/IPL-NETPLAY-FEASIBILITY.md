@@ -44,3 +44,19 @@
 - No browser gameplay, native build, or two-device match has been executed as part of this audit.
 - Source-code licensing does not authorise redistribution of EA game files or third-party patch assets.
 - Do not run flagged or unknown executables, commit proprietary assets, or deploy without rights review.
+
+
+## Implementation progress (source-only, 2026-10-29)
+- `site/play/roster.js`: modern squads no longer disable the multiplayer launcher; roster identity is `modern-2026:<pack sha256>` or `original`.
+- `site/play/c07.js`: includes roster identity in the game version handshake; supports `?netplay=<worker-url>` and propagates that URL into friend invitations; locks roster selection after joining a room.
+- `engine/server/worker.js`: room lobby includes a compatibility boolean and rejects missing or mismatched versions at start.
+- **Not yet tested in browser:** a Cloudflare Worker must be deployed with `NETPLAY_SECRET`, and both players must use the same build, game files and modern pack.
+
+### Two-browser validation procedure
+1. Build a compatible browser runtime and game assets from authorised local copies, using `README.md`. Do not put commercial game assets into the source repository.
+2. Deploy `engine/server/` to a Cloudflare account and set `NETPLAY_SECRET`; use an explicit `ALLOWED_ORIGINS` value for the game site's HTTPS origin.
+3. Host the built `dist/` with COOP/COEP headers. Open `/play/?netplay=https://YOUR-WORKER.workers.dev` on both computers.
+4. On both computers select `OG + India 2026 + IPL teams`, create a room, share its invite, and verify the host can start.
+5. Deliberately select Original teams on the second computer; confirm the host sees the mismatch and cannot start.
+6. Rejoin with the same roster pack, start a CSK-vs-MI match and play through the innings; check for desync indicators, input delay, and player/kit correctness.
+7. Repeat after reloading both browsers and with different network connections; do not label multiplayer stable until these checks pass.
