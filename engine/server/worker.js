@@ -131,7 +131,7 @@ export class NetplayRoom {
       const started = await this.ctx.storage.get('started');
       const slot = Number(msg.slot);
       const away = (await this.ctx.storage.get('away')) || {};
-      if (!started || !(slot in away) || this.peers().some((p) => p.slot === slot)) {
+      if (!started || !(slot in away) || away[slot].version !== String(msg.version || '') || this.peers().some((p) => p.slot === slot)) {
         this.send(ws, { t: 'error', msg: 'Could not rejoin the game.' }); ws.close(4002, 'rejoin'); return;
       }
       ws.serializeAttachment({ ...away[slot], slot });
