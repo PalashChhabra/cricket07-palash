@@ -108,7 +108,8 @@ export class NetplayRoom {
     const players = this.peers().map(({ slot, name, version, rtt, p2p, via }) => ({ slot, name, version, rtt, p2p: p2p || {}, via }))
       .sort((a, b) => a.slot - b.slot);
     const colo = await this.where();
-    for (const p of this.peers()) this.send(p.ws, { t: 'lobby', you: p.slot, host: p.slot === 0, players, started, colo });
+    const compatible = players.every(p => p.version && p.version === players[0]?.version);
+    for (const p of this.peers()) this.send(p.ws, { t: 'lobby', you: p.slot, host: p.slot === 0, players, started, colo, compatible });
   }
 
   async webSocketMessage(ws, data) {
@@ -148,7 +149,7 @@ export class NetplayRoom {
     if (msg.t === 'start' && me.slot === 0 && !(await this.ctx.storage.get('started'))) {
       const peers = this.peers();
       const versions = new Set(peers.map((p) => p.version));
-      if (versions.size > 1) { this.send(ws, { t: 'error', msg: 'Players have different game builds or files; everyone must reload the page.' }); return; }
+      if (versions.size !== 1 || !peers.every(p => p.version)) { this.send(ws, { t: 'error', msg: 'Game version or IPL roster mismatch. Both players must use the same build, roster selection and pack; reload after updating.' }); return; }
       const slots = peers.map((p) => p.slot).sort((a, b) => a - b);
       if (slots.some((s, i) => s !== i)) { this.send(ws, { t: 'error', msg: 'Waiting for the player list to settle; try again.' }); return; }
       const started = { players: peers.length, delay: Math.max(2, Math.min(30, Number(msg.delay) || 6)) };
